@@ -15,6 +15,8 @@ app.get('/', (req, res) => { // 루트디렉토리에 헬로우 월드가 출력
   res.send('Hello World!')
 })
 
+app.post
+
 app.listen(port, () => { // 5000번은 port에서 받아와서 실행하게 됨
   console.log(`Example app listening on port ${port}`)
 })
