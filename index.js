@@ -1,54 +1,63 @@
-const express = require('express'); //익스프레스 모듈을 가져옴
-const app = express(); //새로운 익스프레스 앱을 만듦
-const port = 5000; //5000번 포드를 백서버로 둚
-// const bodyParser = require('body-parser'); 현재 버전에서는 필요없음
-const cookieParser = require('cookie-parser');
-const config = require('./config/key');
+//💡index.js는 서버의 입구
 
-const { User } = require("./models/User");
+//💡express: Node.js에서 서버를 쉽게 만들 수 있게 해주는 라이브러리
+const express = require('express'); //익스프레스 모듈을 가져옴 
+const app = express(); //app 이라는 우리의 서버를 만듦
+const port = 5000; //포드는 5000번
+
+const cookieParser = require('cookie-parser'); // 쿠키를 쉽게 다루기 위한 미들웨어
+const config = require('./config/key'); // DB 주소, 보안키 등 비밀 설정
+const { User } = require("./models/User"); // user.js에서 사용자에 대한 데이터 모델 불러오기
+
 
 //application/xx-www-form-urlencoded 이렇게 구성된 데이터를 분석해서 가져올 수 있게 함
-app.use(express.urlencoded({ extended: true }));
- 
+// urlencoded: 폼 데이터 (예: HTML form 전송)를 읽을 수 있게 함.
+// { extended: true }: 객체 안에 객체를 넣을 수 있게 해주는 옵션.
+app.use(express.urlencoded({ extended: true })); // form 데이터
 //application/json 이렇게 된 파일을 분석해서 가져오게 함
-app.use(express.json());
-app.use(cookieParser());
+// json(): JSON 형식의 요청 본문을 읽을 수 있게 해주는 미들웨어.
+// 예: Postman에서 application/json으로 보내면 이걸로 읽습니다.
+app.use(express.json()); // JSON 데이터
+// req.cookies를 통해 쿠키를 읽을 수 있게 됩니다.
+app.use(cookieParser()); // 쿠키 읽기/쓰기
 
+
+//💡데이터베이스 연결(MongoDB)
 const mongoose = require('mongoose')
-mongoose.connect(config.mongoURI, {
-    //useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false
-}).then(() => console.log('MongoDB Connected...'))
-  .catch(err => console.log(err))
+mongoose.connect(config.mongoURI, {}) //config폴더에 있는 mongoURI를 가져와 연결
+ .then(() => console.log('MongoDB Connected...')) //연결이 되면 해당 문구를
+ .catch(err => console.log(err)) //안되고 에러가 나면 콘솔로그에 에러문구를 띄움
 
-
-app.get('/', (req, res) => { //루트디렉토리에 헬로우 월드가 출력되게 함
-  res.send('Hello World!!')
+//req:request, res:respond 받고 보내고
+app.get('/', (req, res) => { //브라우저에서 "/"(루트디렉토리)로 접속하면 이 코드를 실행
+  res.send('Hello World!!') //사용자에게 보내는 메시지 (response).
 })
 
+//💡회원가입 API 
+// /register 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
 app.post('/register', async (req, res) => {
-  const user = new User(req.body); // 요청 데이터를 이용해 새 유저 생성
-
-  await user
-    .save()
-    .then(() => {
-      res.status(200).json({
-        success: true,
-      });
-    })
-    .catch((err) => {
+  
+    try {
+      //1. 사용자가 보낸 정보인 req.body를 User(...)라는 새 유저 객체를 생성해서 user에 저장
+      const user = new User(req.body);
+      //2. MongoDB에 유저 정보를 저장
+      //.save()는 비동기 작업👉await 덕분에 저장이 끝날 때까지 기다림
+      await user.save()
+      //3.저장 성공 → 200 응답 코드와 함께 클라이언트에게 success: true 응답
+      res.status(200).json({  success: true });
+    } 
+    catch (err) { //try 중 에러가 나면(저장 실패)실행
       console.error(err);
-      res.json({
-        success: false,
-        err: err,
-      });
-    });
+      res.status(400).json({ success: false, err });
+    }// 콘솔에 에러를 찍고, 사용자에게 success: false 응답
 });
 
+//💡로그인 API
 //Mongoose 7부터는 .findOne() 같은 메서드에서 콜백(callback) 방식이 제거되었다.
 //async/await 기반으로 리팩토링 해야함
 app.post('/login',async (req, res) => {
   try {
-    // 요청된 이메일을 데이터베이스에 있는지 찾는다.
+    // DB에서 해당 이메일이 있는지 찾고 결과를 user에 넣음
     const user = await User.findOne({ email: req.body.email });
 
     if (!user) {
@@ -57,8 +66,8 @@ app.post('/login',async (req, res) => {
           message: "제공된 이메일에 해당하는 유저가 없습니다."
       });
     }
-
-    //요청된 이메일이 데이터 베이스에 있다면 비밀번호가 맞는 비밀번호인지 확인.
+    //comparePassword: 비밀번호가 맞는지 확인하는 함수
+    //저장된 암호화된 비밀번호와, 사용자가 입력한 비밀번호를 비교
     user.comparePassword(req.body.password, (err, isMatch) => {
       if (err) return res.status(500).json({ loginSuccess: false, err });
 
@@ -70,10 +79,12 @@ app.post('/login',async (req, res) => {
       }
 
       // 비밀번호까지 맞다면 토큰 생성
+      //userWithToken: 토큰이 들어간 새로운 유저 정보
       user.generateToken((err, userWithToken) => {
         if (err) return res.status(400).send(err);
 
         // 토큰을 쿠키에 저장 후 응답
+        //쿠키에 x_auth라는 이름으로 토큰을 저장
         res
           .cookie("x_auth", userWithToken.token)
           .status(200)
