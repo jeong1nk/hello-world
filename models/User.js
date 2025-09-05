@@ -92,20 +92,19 @@ userSchema.methods.generateToken = function(cb) {
     .catch(err => cb(err));
 };
 
-userSchema.statics.findByToken = function(token, cb) {
-  var user = this;
-  user._id + '' == token
+userSchema.statics.findByToken = async function(token, cb) {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretToken');
 
-  // 토큰을 decode 한다.
-  jwt.verify(token, 'secretToken', function(err, decoded) {
-    // 유저 아이디를 이용해서 유저를 찾은 다음에
-    // 클라이언트에서 가져온 token과 DB에 보관된 토큰이 일치하는지 확인
-    user.findOne({ "_id": decoded, "token": token }, function(err, user) {
-      if (err) return cb(err);
-      cb(null, user)
-    })
-  })
-}
+    // DB에서 유저 찾기
+    const user = await this.findOne({ "_id": decoded, "token": token });
+
+    cb(null, user);
+  } catch (err) {
+    cb(err, null);
+  }
+};
+
 
 
 

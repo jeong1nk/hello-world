@@ -35,7 +35,7 @@ app.get('/', (req, res) => { //브라우저에서 "/"(루트디렉토리)로 접
 
 //💡회원가입 API 
 // /register 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
-app.post('api/users/register', async (req, res) => {
+app.post('/api/users/register', async (req, res) => {
     try {
       //1. 사용자가 보낸 정보인 req.body를 User(...)라는 새 유저 객체를 생성해서 user에 저장
       const user = new User(req.body);
@@ -53,7 +53,7 @@ app.post('api/users/register', async (req, res) => {
 
 //💡로그인 API
 // /login 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
-app.post('api/users/login', async (req, res) => {
+app.post('/api/users/login', async (req, res) => {
   try {
     // DB에서 해당 이메일이 있는지 찾고 결과를 user에 넣음
     //User.findOne은 Mongoose의 메서드, 조건에 맞는 하나의 유저를 찾아줌
@@ -116,6 +116,20 @@ app.get('/api/users/auth', auth, (req, res) => {
     image: req.user.image
   })
 })
+
+app.get('/api/users/logout', auth, async (req, res) => {
+  console.log('req.user', req.user);
+  try {
+    await User.findOneAndUpdate(
+      { _id: req.user._id },
+      { token: "" }
+    );
+    res.clearCookie("x_auth");
+    return res.status(200).send({ success: true });
+  } catch (err) {
+    return res.status(500).json({ success: false, err });
+  }
+});
 
 
 
