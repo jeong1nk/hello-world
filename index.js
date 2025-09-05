@@ -36,7 +36,6 @@ app.get('/', (req, res) => { //브라우저에서 "/"(루트디렉토리)로 접
 //💡회원가입 API 
 // /register 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
 app.post('/register', async (req, res) => {
-  
     try {
       //1. 사용자가 보낸 정보인 req.body를 User(...)라는 새 유저 객체를 생성해서 user에 저장
       const user = new User(req.body);
@@ -53,21 +52,22 @@ app.post('/register', async (req, res) => {
 });
 
 //💡로그인 API
-//Mongoose 7부터는 .findOne() 같은 메서드에서 콜백(callback) 방식이 제거되었다.
-//async/await 기반으로 리팩토링 해야함
-app.post('/login',async (req, res) => {
+// /login 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
+app.post('/login', async (req, res) => {
   try {
     // DB에서 해당 이메일이 있는지 찾고 결과를 user에 넣음
+    //User.findOne은 Mongoose의 메서드, 조건에 맞는 하나의 유저를 찾아줌
     const user = await User.findOne({ email: req.body.email });
 
     if (!user) {
+      //res.json은 클라이언트에게 JSON 형식으로 응답을 보내는 함수
       return res.json({
           loginSuccess: false,
           message: "제공된 이메일에 해당하는 유저가 없습니다."
       });
     }
-    //comparePassword: 비밀번호가 맞는지 확인하는 함수
-    //저장된 암호화된 비밀번호와, 사용자가 입력한 비밀번호를 비교
+    //comparePassword: 비밀번호가 맞는지 확인하는 함수(User.js)
+    //저장된 암호화된 비밀번호와, 사용자가 입력한 비밀번호(req.body.password)를 비교
     user.comparePassword(req.body.password, (err, isMatch) => {
       if (err) return res.status(500).json({ loginSuccess: false, err });
 
@@ -79,17 +79,20 @@ app.post('/login',async (req, res) => {
       }
 
       // 비밀번호까지 맞다면 토큰 생성
+      //generateToken: 토큰을 생성하는 함수(User.js)
       //userWithToken: 토큰이 들어간 새로운 유저 정보
       user.generateToken((err, userWithToken) => {
         if (err) return res.status(400).send(err);
-
-        // 토큰을 쿠키에 저장 후 응답
+        //토큰을 쿠키에 저장 후 응답
         //쿠키에 x_auth라는 이름으로 토큰을 저장
         res
-          .cookie("x_auth", userWithToken.token)
+          .cookie("x_auth", userWithToken.token) //생성된 토큰을 쿠키(x_auth)에 저장
           .status(200)
           .json({ loginSuccess: true, userId: userWithToken._id });
+          //로그인 성공 메시지와 함께 유저의 ID를 응답으로 보냄
+          //쿠키에 토큰을 저장하면, 클라이언트가 다음 요청을 할 때 자동으로 토큰을 보내줘요 (자동 로그인 등 가능).
       });
+
     });
 
   } catch (err) {
@@ -97,6 +100,7 @@ app.post('/login',async (req, res) => {
   }
 });
 
+//지정한 포트 번호로 서버를 실행
 app.listen(port, () => { //5000번은 port에서 받아와서 실행하게 됨
   console.log(`Example app listening on port ${port}`)
 })
