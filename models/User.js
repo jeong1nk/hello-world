@@ -30,7 +30,7 @@ const userSchema = mongoose.Schema({
     type: Number, //관리자는 1번 이라고 생각
     default: 0 // 아무것도 지정하지 않으면 기본값은 0
   },
-  // image: String,
+  image: String,
   token: {
     type: String //유효성 관리 등
   },
@@ -91,6 +91,23 @@ userSchema.methods.generateToken = function(cb) {
     .then(savedUser => cb(null, savedUser)) //저장된 사용자 데이터를 콜백 함수로 전달
     .catch(err => cb(err));
 };
+
+userSchema.statics.findByToken = function(token, cb) {
+  var user = this;
+  user._id + '' == token
+
+  // 토큰을 decode 한다.
+  jwt.verify(token, 'secretToken', function(err, decoded) {
+    // 유저 아이디를 이용해서 유저를 찾은 다음에
+    // 클라이언트에서 가져온 token과 DB에 보관된 토큰이 일치하는지 확인
+    user.findOne({ "_id": decoded, "token": token }, function(err, user) {
+      if (err) return cb(err);
+      cb(null, user)
+    })
+  })
+}
+
+
 
 //mongoose.model('User', userSchema)는 User 모델을 생성
 const User = mongoose.model('User', userSchema)

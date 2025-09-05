@@ -8,7 +8,7 @@ const port = 5000; //포드는 5000번
 const cookieParser = require('cookie-parser'); // 쿠키를 쉽게 다루기 위한 미들웨어
 const config = require('./config/key'); // DB 주소, 보안키 등 비밀 설정
 const { User } = require("./models/User"); // user.js에서 사용자에 대한 데이터 모델 불러오기
-
+const { auth } = require("./middleware/auth");
 
 //application/xx-www-form-urlencoded 이렇게 구성된 데이터를 분석해서 가져올 수 있게 함
 // urlencoded: 폼 데이터 (예: HTML form 전송)를 읽을 수 있게 함.
@@ -35,7 +35,7 @@ app.get('/', (req, res) => { //브라우저에서 "/"(루트디렉토리)로 접
 
 //💡회원가입 API 
 // /register 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
-app.post('/register', async (req, res) => {
+app.post('api/users/register', async (req, res) => {
     try {
       //1. 사용자가 보낸 정보인 req.body를 User(...)라는 새 유저 객체를 생성해서 user에 저장
       const user = new User(req.body);
@@ -53,7 +53,7 @@ app.post('/register', async (req, res) => {
 
 //💡로그인 API
 // /login 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
-app.post('/login', async (req, res) => {
+app.post('api/users/login', async (req, res) => {
   try {
     // DB에서 해당 이메일이 있는지 찾고 결과를 user에 넣음
     //User.findOne은 Mongoose의 메서드, 조건에 맞는 하나의 유저를 찾아줌
@@ -99,6 +99,25 @@ app.post('/login', async (req, res) => {
     return res.status(500).json({ loginSuccess: false, err });
   }
 });
+
+
+// role 1 어드민    role 2 특정 부서 어드민
+// role 0 -> 일반유저    role 0이 아니면 관리자
+app.get('/api/users/auth', auth, (req, res) => {
+  // 여기까지 미들웨어를 통과해 왔다는 얘기는 Authentication이 True 라는 말
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0 ? false : true,
+    isAuth: true,
+    email: req.user.email,
+    name: req.user.name,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image
+  })
+})
+
+
 
 //지정한 포트 번호로 서버를 실행
 app.listen(port, () => { //5000번은 port에서 받아와서 실행하게 됨
