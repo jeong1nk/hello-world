@@ -3,7 +3,13 @@
 //💡express: Node.js에서 서버를 쉽게 만들 수 있게 해주는 라이브러리
 const express = require('express'); //익스프레스 모듈을 가져옴 
 const app = express(); //app 이라는 우리의 서버를 만듦
-const port = 5000; //포드는 5000번
+
+const cors = require('cors');
+
+app.use(cors({
+  origin: 'http://localhost:3000',  // React 앱 주소
+  credentials: true, // 쿠키 등 인증정보 허용할 경우 필요
+}));
 
 const cookieParser = require('cookie-parser'); // 쿠키를 쉽게 다루기 위한 미들웨어
 const config = require('./config/key'); // DB 주소, 보안키 등 비밀 설정
@@ -32,6 +38,11 @@ mongoose.connect(config.mongoURI, {}) //config폴더에 있는 mongoURI를 가�
 app.get('/', (req, res) => { //브라우저에서 "/"(루트디렉토리)로 접속하면 이 코드를 실행
   res.send('Hello World!!') //사용자에게 보내는 메시지 (response).
 })
+
+app.get('/api/hello', (req, res) => {
+  console.log('/api/hello 호출됨');
+  res.send("백엔드 응답: 성공입니다!");
+});
 
 //💡회원가입 API 
 // /register 라는 회원가입 요청을 처리하는 주소를 만들고 post요청
@@ -132,7 +143,7 @@ app.get('/api/users/logout', auth, async (req, res) => {
 });
 
 
-
+const port = 5000; //포드는 5000번
 //지정한 포트 번호로 서버를 실행
 app.listen(port, () => { //5000번은 port에서 받아와서 실행하게 됨
   console.log(`Example app listening on port ${port}`)
